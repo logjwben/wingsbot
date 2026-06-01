@@ -1,5 +1,5 @@
 """
-Dallas Wings Twitter → Bluesky Mirror Bot (Async + yt-dlp Edition)
+Dallas Wings Twitter → Bluesky Mirror Bot (Async + yt-dlp + Nitter→Twitter Edition)
 
 Polls an RSS/Nitter feed of the Wings' Twitter account and
 mirrors new posts to a Bluesky account, including images and videos.
@@ -64,6 +64,15 @@ def save_seen(seen: Set[str]) -> None:
     tmp.replace(STATE_FILE)
 
 # ── Utility helpers ───────────────────────────────────────────────────────────
+
+def nitter_to_twitter(url: str) -> str:
+    """
+    Convert Nitter URLs to real Twitter/X URLs so yt-dlp can extract video.
+    """
+    url = url.replace("nitter.net", "x.com")
+    url = url.replace("nitter.poast.org", "x.com")
+    url = url.replace("nitter.cz", "x.com")
+    return url
 
 def is_video_url(url: str) -> bool:
     return any(url.lower().split("?")[0].endswith(ext)
@@ -159,7 +168,7 @@ async def get_video_service_token(client: httpx.AsyncClient, session: Dict[str, 
     try:
         auth_resp = await client.get(
             f"{BSKY_API}/com.atproto.server.getServiceAuth",
-            headers={"Authorization": f"Bearer {session['accessJwt']}"},
+            headers={"Authorization": f"Bearer {session['accessJwt']}"}, 
             params={
                 "aud": "did:web:video.bsky.app",
                 "lxm": "app.bsky.video.uploadVideo",
@@ -356,7 +365,7 @@ async def process_entry(client: httpx.AsyncClient, session: Dict[str, Any],
     embed = None
 
     if vid_urls:
-        original_url = vid_urls[0]
+        original_url = nitter_to_twitter(vid_urls[0])
 
         real_mp4 = await extract_twitter_video_with_ytdlp(original_url)
 
