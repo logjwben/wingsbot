@@ -1,22 +1,23 @@
 name: Wings Twitter → Bluesky Mirror
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: "*/30 * * * *"   # Runs every 30 minutes (UTC)
-  workflow_dispatch:          # Allows manual runs
+    - cron: "*/30 * * * *"
 
 jobs:
   mirror:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write         # Needed to commit seen_ids.json
+      contents: write
 
     steps:
+      - name: Set up job
+        run: echo "Starting mirror job..."
+
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0      # Full history so pull/rebase works
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,27 +30,23 @@ jobs:
 
       - name: Run mirror bot
         env:
-          RSS_FEED_URL:       ${{ secrets.RSS_FEED_URL }}
-          BSKY_HANDLE:        ${{ secrets.BSKY_HANDLE }}
-          BSKY_APP_PASSWORD:  ${{ secrets.BSKY_APP_PASSWORD }}
+          RSS_FEED_URL: ${{ secrets.RSS_FEED_URL }}
+          BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
+          BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
         run: |
           echo "Running bot..."
-          python bot.py || (echo "Bot crashed" && exit 1)
+          python bot.py
 
       - name: Save state (seen_ids.json)
         run: |
-          git config user.name  "wings-mirror-bot"
-          git config user.email "bot@users.noreply.github.com"
+          git config user.name "wings-mirror-bot"
+          git config user.email "actions@github.com"
+          git pull
 
-          # Pull latest changes BEFORE committing
-          git pull --rebase --autostash origin main
-
-          git add seen_ids.json
-
-          # Only commit if there are changes
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: update seen_ids [skip ci]"
+          if [ -f seen_ids.json ]; then
+            git add seen_ids.json
+            git commit -m "chore: update seen_ids [skip ci]" || echo "No changes to commit"
             git push
           else
-            echo "No changes to commit"
+            echo "seen_ids.json does not exist yet — skipping commit"
           fi
