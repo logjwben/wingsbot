@@ -25,7 +25,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install feedparser requests beautifulsoup4 atproto
+          pip install feedparser requests beautifulsoup4 httpx yt-dlp
 
       - name: Run mirror bot
         env:
