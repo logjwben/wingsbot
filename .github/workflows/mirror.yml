@@ -2,22 +2,21 @@ name: Wings Twitter → Bluesky Mirror
 
 on:
   schedule:
-    # Changed to 30 minutes to prevent GitHub queue delays from causing git push conflicts
-    - cron: "*/30 * * * *"
-  workflow_dispatch:   # lets you trigger it manually from GitHub UI
+    - cron: "*/30 * * * *"   # Runs every 30 minutes (UTC)
+  workflow_dispatch:          # Allows manual runs
 
 jobs:
   mirror:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write   # needed to commit seen_ids.json back to the repo
+      contents: write         # Needed to commit seen_ids.json
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches all history so git pull can merge smoothly if needed
+          fetch-depth: 0      # Full history so pull/rebase works
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -25,21 +24,32 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install feedparser requests beautifulsoup4
+        run: |
+          pip install feedparser requests beautifulsoup4 atproto
 
       - name: Run mirror bot
         env:
           RSS_FEED_URL:       ${{ secrets.RSS_FEED_URL }}
           BSKY_HANDLE:        ${{ secrets.BSKY_HANDLE }}
           BSKY_APP_PASSWORD:  ${{ secrets.BSKY_APP_PASSWORD }}
-        run: python bot.py
+        run: |
+          echo "Running bot..."
+          python bot.py || (echo "Bot crashed" && exit 1)
 
       - name: Save state (seen_ids.json)
         run: |
           git config user.name  "wings-mirror-bot"
           git config user.email "bot@users.noreply.github.com"
+
+          # Pull latest changes BEFORE committing
+          git pull --rebase --autostash origin main
+
           git add seen_ids.json
-          
-          # If a manual run and an automated run overlap, pull changes first to prevent a crash
-          git diff --cached --quiet || (git commit -m "chore: update seen_ids [skip ci]" && git pull --rebase origin main && git push)
-          
+
+          # Only commit if there are changes
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update seen_ids [skip ci]"
+            git push
+          else
+            echo "No changes to commit"
+          fi
