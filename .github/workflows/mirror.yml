@@ -2,8 +2,8 @@ name: Wings Twitter → Bluesky Mirror
 
 on:
   schedule:
-    # Runs every 5 minutes
-    - cron: "*/5 * * * *"
+    # Changed to 30 minutes to prevent GitHub queue delays from causing git push conflicts
+    - cron: "*/30 * * * *"
   workflow_dispatch:   # lets you trigger it manually from GitHub UI
 
 jobs:
@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history so git pull can merge smoothly if needed
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -37,5 +39,7 @@ jobs:
           git config user.name  "wings-mirror-bot"
           git config user.email "bot@users.noreply.github.com"
           git add seen_ids.json
-          git diff --cached --quiet || git commit -m "chore: update seen_ids [skip ci]"
-          git push
+          
+          # If a manual run and an automated run overlap, pull changes first to prevent a crash
+          git diff --cached --quiet || (git commit -m "chore: update seen_ids [skip ci]" && git pull --rebase origin main && git push)
+          
