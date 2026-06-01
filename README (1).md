@@ -1,3 +1,4 @@
+This repo powers the Wings → Bluesky mirror bot.
 # Dallas Wings Twitter → Bluesky Mirror
 
 Automatically mirrors the Dallas Wings Twitter/X account to Bluesky,
