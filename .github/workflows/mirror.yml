@@ -2,7 +2,7 @@ name: Wings Twitter → Bluesky Mirror
 
 on:
   schedule:
-    # Runs every 30 minutes
+    # Runs every 5 minutes
     - cron: "*/5 * * * *"
   workflow_dispatch:   # lets you trigger it manually from GitHub UI
 
